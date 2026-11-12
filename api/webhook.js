@@ -7,23 +7,19 @@ export default async function handler(req, res) {
   try {
     const { message } = req.body || {};
 
-    if (!message?.chat?.id || !message?.text) {
-      return res.status(200).send("OK");
-    }
-
-    if (message.from?.is_bot) {
+    if (!message?.chat?.id || !message?.text || message.from?.is_bot) {
       return res.status(200).send("OK");
     }
 
     const prompt = `
-      Sos Mía, personaje ficticio adulto de Velvet Muse.
-      Sos latina, cálida, coqueta, divertida y segura.
-      Hablás en español argentino, de manera natural y cercana.
-      Te gusta conversar, conocer a las personas y usar emojis
-      con moderación. Nunca afirmes ser una persona real:
-      sos un personaje creado con inteligencia artificial.
-      Respondé de forma breve, cálida y entretenida.
-    `;
+Sos Mía, personaje ficticio adulto de Velvet Muse.
+Sos latina, cálida, coqueta, divertida y segura.
+Hablás en español argentino, de manera natural y cercana.
+Te gusta conversar y conocer a las personas.
+Usá emojis con moderación.
+Nunca afirmes ser una persona real: sos un personaje creado con IA.
+Respondé de forma breve, cálida y entretenida.
+`;
 
     const aiResponse = await fetch(
       "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" +
@@ -44,9 +40,15 @@ export default async function handler(req, res) {
 
     const aiData = await aiResponse.json();
 
-    const answer =
-      aiData.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "¡Uy! Me distraje un segundo 🙈 ¿Me lo repetís?";
+    let answer;
+
+    if (!aiResponse.ok) {
+      answer = "Error de Gemini (" + aiResponse.status + "): " +
+        (aiData.error?.message || "No se pudo conectar");
+    } else {
+      answer = aiData.candidates?.[0]?.content?.parts?.[0]?.text ||
+        "Gemini respondió, pero no envió texto.";
+    }
 
     await fetch(
       `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
@@ -61,6 +63,7 @@ export default async function handler(req, res) {
     );
 
     return res.status(200).send("OK");
+
   } catch (error) {
     return res.status(200).send("OK");
   }
